@@ -99,6 +99,58 @@ Results are saved automatically to `results/tables/` and `results/figures/`.
 
 ---
 
+## Main Results
+
+### Average AUC across 11 benchmark datasets
+
+Average AUC across 11 benchmark datasets (bold = best per classifier):
+
+| Method | RF | LightGBM | MLP |
+|--------|:--:|:--------:|:---:|
+| **Q-G-CTGAN (adaptive)** | **0.9027** | **0.8993** | **0.8680** |
+| G-SMOTE | 0.8974 | 0.8950 | 0.8561 |
+| SMOTE | 0.8954 | 0.8935 | 0.8604 |
+| ADASYN | 0.8950 | 0.8904 | 0.8566 |
+| TVAE | 0.8967 | 0.8913 | 0.8584 |
+| G-CTGAN | 0.8850 | 0.8838 | 0.8598 |
+| CTGAN | 0.8853 | 0.8879 | 0.8758 |
+| None (no oversampling) | 0.9058 | 0.8956 | 0.8749 |
+
+> Per-dataset breakdown: `results/tables/04_auc_table_[rf|lgbm|mlp].csv`
+
+> Full per-dataset AUC and F1-score tables are in `results/tables/`.
+
+### Average Rank (Friedman test, lower is better)
+
+Average rank across 11 datasets (Friedman test, lower = better):
+
+| Method | RF | LightGBM | MLP | Overall |
+|--------|:--:|:--------:|:---:|:-------:|
+| **Q-G-CTGAN (adaptive)** | **2.77** | **2.91** | **3.55** | **3.08** |
+| SMOTE | 3.14 | 3.59 | 4.27 | 3.67 |
+| G-SMOTE | 3.27 | 3.77 | 4.77 | 3.94 |
+| ADASYN | 3.64 | 4.09 | 4.73 | 4.15 |
+| G-CTGAN | 4.91 | 4.45 | 3.41 | 4.26 |
+| CTGAN | 5.27 | 4.82 | 3.18 | 4.42 |
+| TVAE | 5.00 | 4.36 | 4.09 | 4.48 |
+
+> Full ranking table: `results/tables/04_method_ranking.csv`
+
+### Q-G-CTGAN vs G-CTGAN (AUC improvement)
+
+| Classifier | Wins (out of 11) | Mean ΔAUC |
+|------------|:----------------:|:---------:|
+| RF | 8 | +0.0176 |
+| LightGBM | 7 | +0.0155 |
+| MLP | 5 | +0.0082 |
+
+### MMD Reduction (filtering before → after)
+
+Adaptive α achieves an average MMD² reduction of **+0.0041** across all datasets,
+confirming that quality filtering improves distributional fidelity of synthetic samples.
+
+---
+
 ## License
 
 This repository is released under the [MIT License](LICENSE).
