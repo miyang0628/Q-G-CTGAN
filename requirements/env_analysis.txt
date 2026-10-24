@@ -1,0 +1,7 @@
+# Notebooks 06, 07 (aggregation, statistics, figures)
+pandas
+numpy
+scipy
+scikit-posthocs
+matplotlib
+seaborn

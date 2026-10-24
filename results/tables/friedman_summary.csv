@@ -1,0 +1,4 @@
+classifier,n_datasets,n_methods,friedman_chi2,friedman_p,CD_0.05,best_method,QGCTGAN_avg_rank,n_sig_pairs
+RF,16,7,26.7444,0.000162,2.252,SMOTE,3.62,4
+LGBM,16,7,9.3251,0.156101,2.252,SMOTE,3.5,0
+MLP,16,7,26.0447,0.000218,2.252,G-SMOTE,3.38,3

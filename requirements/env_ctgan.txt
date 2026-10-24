@@ -1,0 +1,8 @@
+# Notebooks 02, 03 (KMeans_CTGAN, CTGAN_MOS, Q-G-CTGAN, G-CTGAN)
+ctgan
+torch
+scikit-learn
+lightgbm
+scipy
+pandas
+numpy

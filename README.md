@@ -1,247 +1,131 @@
-# Q-G-CTGAN: Quality-Aware Cluster-Conditioned Oversampling via Intra-Cluster Synthetic Sample Filtering
+# Quality-Aware Cluster-Conditioned Oversampling via Intra-Cluster Synthetic Sample Filtering
 
-> **Manuscript ID: ASOC-D-26-06410** — Applied Soft Computing Journal (Major Revision)
+Reproducibility code for the manuscript *"Quality-Aware Cluster-Conditioned
+Oversampling via Intra-Cluster Synthetic Sample Filtering"* (**Q-G-CTGAN**),
+currently **under review** at a peer-reviewed journal.
 
----
+> **Anonymous version.** This repository is released for double-blind review and
+> contains no author- or affiliation-identifying information. Please do not add
+> author names, institutional details, or private links until the review is complete.
 
-## Overview
-
-**Q-G-CTGAN** is a generative oversampling framework designed for tabular class-imbalance problems.
-It extends the cluster-conditioned CTGAN pipeline (originally proposed in an earlier
-architecture referred to as G-CTGAN) with a two-stage quality filtering mechanism
-that removes synthetic minority samples that drift from the true minority distribution
-or encroach on the majority boundary.
-
-This repository reflects the **major revision** of the manuscript, prepared in response
-to three reviewers' feedback. The revision substantially extends the original experimental
-evaluation: the benchmark collection now spans **16 datasets** (11 original + 5 newly added,
-covering remote sensing, telecommunications, semiconductor manufacturing, medical diagnosis,
-and network intrusion detection), and the comparison now includes **4 additional generative
-baselines** (K-means CTGAN, CTGAN-MOS, ctdGAN, CTAB-GAN+) alongside the original
-non-generative baselines (SMOTE, ADASYN, G-SMOTE).
-
-### Key contributions
-
-- **GMM-based partitioning** — minority class is split into coherent sub-clusters; independent CTGANs are trained per cluster, eliminating inter-cluster interference.
-- **Two-stage quality filter** — Stage 1 scores each candidate sample with a composite quality metric Q(x̃) combining density (S_density), separability (S_sep), and local outlier factor (S_lof); Stage 2 applies MMD-contribution selection for distributional fidelity.
-- **Adaptive threshold α_c** — filtering aggressiveness scales inversely with per-cluster GMM mean log-likelihood, applying stricter rejection to unstable clusters. α_c is defined as a **rejection quantile** (fraction of the per-cluster candidate pool discarded), empirically validated to match measured Stage-1 rejection rates exactly (see `08_quality_ablation_and_alpha_viz.ipynb`).
-- **Target-aware candidate generation** — candidate multiplier is computed per dataset to approach the full oversampling target Δ = n_maj − n_min, bounded to [5×, 50×] to keep runtime tractable on extreme-IR datasets.
+Q-G-CTGAN addresses class imbalance in tabular classification. A separate CTGAN
+is trained on each GMM-derived sub-cluster of the minority class, and generated
+candidates pass a **two-stage quality filter**: (1) a composite quality score
+`Q(x)` combining density fidelity, boundary separability, and local-outlier
+behaviour, with a per-cluster rejection quantile; (2) Maximum Mean Discrepancy
+(MMD)-based selection that aligns retained samples with the true minority
+distribution.
 
 ---
 
-## Repository Structure
+## Repository layout
 
 ```
-├── 01_dataset_loading.ipynb                 # Dataset loading & verification (16 datasets)
-├── 02_baselines.ipynb                       # Non-generative baselines (None, SMOTE, ADASYN, G-SMOTE)
-│                                             #   with the extended metric suite (AUC, PR-AUC, F1,
-│                                             #   Precision, Recall, G-mean, Balanced Accuracy)
-├── 03_Q-G-CTGAN.ipynb                       # Proposed method: GMM clustering, CTGAN training,
-│                                             #   target-aware candidate generation, two-stage
-│                                             #   filtering, MMD Stage-2 ablation, evaluation
-├── 04a_new_baselines_sdv.ipynb               # K-means CTGAN, CTGAN-MOS  (env: venv_sdv)
-├── 04b_new_baselines_ctdgan.ipynb            # ctdGAN                    (env: venv_ctdgan)
-├── 04c_new_baselines_ctabgan.ipynb           # CTAB-GAN+                 (env: venv_ctabgan)
-├── 05_results_integration.ipynb              # Unifies results from Notebooks 02–04 into one schema
-├── 06_statistical_analysis.ipynb             # Friedman test + Nemenyi post-hoc, CD diagrams
-├── 07_computational_efficiency.ipynb         # Runtime comparison, Q-G-CTGAN stage breakdown
-├── 08_quality_ablation_and_alpha_viz.ipynb   # Extended quality-score component ablation (16
-│                                             #   datasets); empirical validation of adaptive α
-│                                             #   (rejection rate vs. theoretical curve, Figure 4)
+.
+├── data/                      # place the 16 dataset CSVs here (see Data availability)
+├── notebooks/
+│   ├── 01_run_baselines_classic.ipynb     # None, SMOTE, ADASYN, G-SMOTE
+│   ├── 02_run_baselines_ctgan.ipynb        # KMeans_CTGAN, CTGAN_MOS
+│   ├── 03_run_qgctgan_and_gctgan.ipynb     # Q-G-CTGAN (proposed) + G-CTGAN (unfiltered)
+│   ├── 04_run_ctdgan.ipynb                 # ctdGAN
+│   ├── 05_run_ctabgan.ipynb                # CTAB-GAN+
+│   ├── 06_aggregate_and_statistics.ipynb   # mean/std/95% CI, per-classifier Friedman, full-vs-unfiltered
+│   └── 07_figures.ipynb                    # grayscale figures (PNG + PDF, 600 dpi)
 └── results/
-    ├── figures/                              # Generated figures (PNG + PDF)
-    └── *.csv                                 # Generated result/summary tables
+    ├── tables/                # all CSV outputs (raw per-seed, aggregated, statistics)
+    └── figures/               # all figures (.png and .pdf, 600 dpi, grayscale)
 ```
 
-### Multiple virtual environments
-
-Several new baselines require mutually incompatible dependency versions and are therefore run in
-separate virtual environments:
-
-| Environment      | Used by                | Notes                                                |
-|-------------------|--------------------------|--------------------------------------------------------|
-| `venv_base`       | Notebooks 01, 02          | `imbalanced-learn`, `imbalanced-learn-extra`, `lightgbm` |
-| `venv_sdv`        | Notebooks 03, 04a, 08     | `sdv` / `ctgan`, GPU-enabled PyTorch (CUDA)             |
-| `venv_ctdgan`     | Notebook 04b                | `artsyn` (official ctdGAN implementation)               |
-| `venv_ctabgan`    | Notebook 04c                | official `Team-TUD/CTAB-GAN-Plus` repository            |
-
-Notebooks 05, 06, and 07 operate on saved CSV results only and can be run in any environment
-with `pandas`, `scipy`, `scikit-posthocs`, and `matplotlib` installed.
+Each notebook is a **single self-contained code cell** (English comments; notebook
+name on the first line), so it can be run top-to-bottom in whichever environment
+its method requires.
 
 ---
 
-## Datasets
+## Data availability
 
-Experiments use **16 public benchmark datasets** spanning imbalance ratios from IR 1.87 to 577.88.
+Place each dataset as `data/<name>.csv` with a `target` column (`1` = minority /
+positive class). The 16 datasets are public:
 
-| IR Range               | Datasets |
-|--------------------------|----------|
-| Low (IR < 10)             | Pima Diabetes, Credit Default, IBM HR Attrition, Churn, Ecoli, Satellite |
-| Medium (10 ≤ IR < 50)     | SECOM, Thyroid Sick, Wine Quality, Yeast ME2, Mammography |
-| Extreme (IR ≥ 50)         | UNSW-NB15, Protein Homology, Abalone-19, PageBlocks, Fraud Detection |
+- **UCI Machine Learning Repository** (https://archive.ics.uci.edu): Pima
+  Diabetes, Credit Default, IBM HR Attrition, Ecoli, Wine Quality, Yeast ME2,
+  Mammography, Abalone 19, PageBlocks, Protein Homology, SECOM (missing values
+  median-imputed; `class`/`timestamp` and zero-variance columns dropped).
+- **OpenML** (https://www.openml.org): Satellite (Statlog/Landsat, id 182),
+  Churn (id 40701), PageBlocks (id 30).
+- **Kaggle**: Fraud Detection (`mlg-ulb/creditcardfraud`), UNSW-NB15
+  (`dhoogla/unswnb15`, training-set parquet).
+- **imbalanced-learn** `fetch_datasets()`: Thyroid Sick and several of the above.
 
-**5 datasets added in this revision** (domain and source in parentheses):
-
-- **Satellite** (remote sensing; OpenML, Statlog/Landsat, data ID 182)
-- **Churn** (telecommunications; OpenML, data ID 40701)
-- **SECOM** (semiconductor manufacturing fault detection; UCI ML Repository, ID 179; contains realistic sensor-failure missing values, imputed with the column-wise median)
-- **Thyroid Sick** (medical diagnosis; `imbalanced-learn` built-in collection)
-- **UNSW-NB15** (network intrusion detection / cybersecurity; Moustafa & Slay, 2015; binary task detecting the Backdoor attack category)
-
-All datasets are loaded, one-hot encoded (for categorical features), and verified in
-`01_dataset_loading.ipynb`. Note: Wine Quality's imbalance ratio was corrected from an
-earlier reported value (17.73) to the measured value (25.77) during preparation of this
-revision.
+Expected keys (16): `credit_default, fraud_detection, pima_diabetes,
+ibm_attrition, yeast_me2, mammography, abalone_19, wine_quality, ecoli,
+pageblocks, protein_homo, satellite, churn, secom, thyroid_sick, unsw_nb15`.
 
 ---
 
-## Compared Methods
+## Environments
 
-| Method | Category | Notebook |
-|--------|----------|----------|
-| None (no oversampling) | Baseline | 02 |
-| SMOTE | Interpolation | 02 |
-| ADASYN | Adaptive interpolation | 02 |
-| G-SMOTE | Geometric interpolation | 02 |
-| K-means CTGAN | Cluster-conditioned generative | 04a |
-| CTGAN-MOS | Noise-filtered generative | 04a |
-| ctdGAN | Cluster-conditioned generative | 04b |
-| CTAB-GAN+ | Deep generative (mixed-type) | 04c |
-| **Q-G-CTGAN** (proposed) | Quality-filtered cluster-conditioned generative | 03 |
+The generative baselines use mutually incompatible dependencies; use one
+environment per notebook (Python 3.10+ recommended).
 
-**Note on reimplementations:** K-means CTGAN, ctdGAN, and CTAB-GAN+ have official or
-source-paper-derived implementations (see Notebook 04a/b/c docstrings for details).
-**CTGAN-MOS has no official implementation** and no publicly accessible description of its
-exact "coin-throwing" noise-removal procedure beyond the source paper's abstract; we
-reimplement a principled stochastic approximation (Bernoulli accept/reject weighted by
-k-NN density similarity to the real minority class), disclosed explicitly in
-`04a_new_baselines_sdv.ipynb`.
+| Notebook | Key packages |
+|----------|--------------|
+| 01 | `scikit-learn`, `imbalanced-learn`, `imbalanced-learn-extra` (`imblearn_extra`), `lightgbm` |
+| 02, 03 | `scikit-learn`, `ctgan`, `lightgbm`, `scipy`, `torch` |
+| 04 | `artsyn==0.5.2` (ctdGAN), `scikit-learn`, `lightgbm`, `torch` |
+| 05 | CTAB-GAN+ repo (`Team-TUD/CTAB-GAN-Plus`) on `sys.path`, `torch`, `scikit-learn`, `lightgbm` |
+| 06, 07 | `pandas`, `numpy`, `scipy`, `scikit-posthocs`, `matplotlib`, `seaborn` |
 
-**Note on dataset coverage:** CTAB-GAN+ was evaluated on 12 of 16 datasets. Three datasets
-(Fraud Detection, Protein Homology, UNSW-NB15) were excluded due to confirmed/projected
-computational infeasibility (21.7–42.3 projected hours under the standard 150-epoch
-schedule, based on a runtime-screening model in `04c_new_baselines_ctabgan.ipynb`); Ecoli
-was excluded due to a structural instability in conditional generation on its very small
-minority class (n=24, confirmed via stability screening).
+For notebook 05, clone the CTAB-GAN+ repository and set `CTABGAN_REPO` (top of the
+cell) to its path.
 
 ---
 
-## Requirements
+## How to run
 
-```bash
-pip install -r requirements.txt
-```
-
-Core dependencies (spread across the four virtual environments above):
-`torch`, `ctgan`, `sdv`, `artsyn`, `scikit-learn`, `lightgbm`, `imbalanced-learn`,
-`imbalanced-learn-extra`, `scipy`, `pandas`, `matplotlib`, `seaborn`, `scikit-posthocs`
-
----
-
-## Reproducibility
-
-Run notebooks in order, switching virtual environments as indicated:
-
-```
-01 → 02 → 03 → [04a | 04b | 04c] → 05 → 06 → 07 → 08
-```
-
-Notebooks 04a, 04b, and 04c are mutually independent and can be run in any order (or in
-parallel across separate environments); Notebook 05 requires all three to have completed
-first, and Notebook 08 requires Notebook 03's shared pipeline functions.
-
-All random seeds are fixed inside each notebook (`RANDOM_STATE = 42`). Results are saved
-incrementally to `results/*.csv` and `results/figures/*.png` / `*.pdf` after each dataset,
-so long-running notebooks (04b/04c on large datasets, 02 with the extended metric suite)
-can be resumed if interrupted. Notebooks 02 and 04b in particular can take several hours
-on the three largest datasets (Fraud Detection, Protein Homology, UNSW-NB15); we
-recommend running these unattended.
+1. Put the 16 CSVs in `data/`.
+2. Run notebooks **01–05**, each in its matching environment. Each appends a
+   `results/tables/raw_<family>.csv`. To test quickly, set `DATASETS_SUBSET`
+   (e.g. `["ecoli", "pima_diabetes"]`) and/or shorten `SEEDS` at the top of the cell.
+3. Run **06** to merge the raw files and produce the aggregated tables and
+   statistics in `results/tables/`.
+4. Run **07** to render all figures to `results/figures/` (PNG + PDF, 600 dpi).
 
 ---
 
-## Main Results
+## Evaluation protocol
 
-### Average rank across 16 datasets (Friedman–Nemenyi, 7 oversampling methods)
+- **5 repeated stratified 70/30 holdouts** (`SEEDS = [42, 43, 44, 45, 46]`), applied
+  uniformly to every method; features standardized on the training split only;
+  oversampling applied to the scaled training set; metrics on the held-out test set.
+- Three classifiers: Random Forest, LightGBM, MLP. Metrics: AUC, PR-AUC, macro-F1,
+  macro-Precision, macro-Recall, G-mean, Balanced Accuracy.
+- Results are reported as **mean ± 95% CI** (Student-t) over the 5 seeds.
+- **Statistics (notebook 06):** a **separate Friedman test is run for each
+  classifier** (RF, LGBM, MLP), with Nemenyi post-hoc and critical-difference
+  diagrams, computed on the across-seed mean AUC.
+- **Q-G-CTGAN vs G-CTGAN (unfiltered):** both share the same generative base per
+  (dataset, seed); G-CTGAN draws uniformly at random from the candidate pool with
+  no filter, isolating the contribution of the two-stage filter.
 
-CTAB-GAN+ is excluded from this primary ranking analysis for complete-block validity (see
-Notebook 06); a secondary 8-method / 12-dataset analysis including CTAB-GAN+ is also
-reported there.
-
-| Method | RF | LightGBM | MLP | **Overall** |
-|--------|:--:|:--------:|:---:|:------------:|
-| **Q-G-CTGAN** | 3.25 | 2.44 | 3.78 | **3.16** |
-| SMOTE | 2.75 | 4.00 | 4.25 | 3.67 |
-| K-means CTGAN | 4.59 | 3.56 | 3.19 | 3.78 |
-| G-SMOTE | 4.06 | 4.38 | 3.19 | 3.88 |
-| CTGAN-MOS | 4.28 | 3.88 | 3.62 | 3.93 |
-| ADASYN | 3.69 | 4.81 | 5.31 | 4.60 |
-| ctdGAN | 5.38 | 4.94 | 4.66 | 4.99 |
-
-> Friedman χ² = 23.02, p < 0.001. **3 of 21 pairwise Nemenyi comparisons are statistically
-> significant** (α = 0.05) — a new result relative to an earlier, 11-dataset version of this
-> analysis, where none were significant: Q-G-CTGAN significantly outperforms **ctdGAN**
-> (p = 0.0006) and **ADASYN** (p = 0.0177).
-> Full pairwise matrices and CD diagram: `results/06_nemenyi_pvalues_b.csv`,
-> `results/06_cd_diagram_b.png`.
-
-### Computational efficiency (average combined runtime per dataset, seconds)
-
-| Method | Mean (s) | Median (s) |
-|--------|:--------:|:----------:|
-| None | 22.14 | 5.75 |
-| **Q-G-CTGAN** | **53.98** | 25.33 |
-| CTGAN-MOS | 61.18 | 14.35 |
-| K-means CTGAN | 87.02 | 32.25 |
-| G-SMOTE | 95.18 | 8.70 |
-| SMOTE | 114.16 | 6.96 |
-| ADASYN | 121.86 | 7.03 |
-| CTAB-GAN+ | 292.95 | 155.66 |
-| ctdGAN | 1788.05 | 117.83 |
-
-> Q-G-CTGAN is the fastest of all five generative baselines compared. A stage-by-stage
-> breakdown (`results/07_qgctgan_stage_breakdown.csv`) shows CTGAN training accounts for
-> 83.6% of total runtime, while the proposed quality-filtering stages (Stage 1 + Stage 2
-> combined) account for only 3.0%.
-
-### MMD Stage-2 ablation (independent evaluation)
-
-On the 10 of 16 datasets where the Stage-1 candidate pool exceeds the oversampling target
-(making the MMD-selection toggle mechanically meaningful), Stage 2 shows a small, mixed
-effect on downstream AUC (mean ΔAUC = −0.0001; improves 6/10 datasets, degrades 4/10). On
-the remaining 6 datasets (predominantly extreme-IR cases), the Stage-1 pool does not exceed
-the target even at the maximum candidate multiplier, making the toggle inapplicable
-regardless of implementation. Full results: `results/03_qgctgan_results.csv` (columns
-`mmd_stage`, `AUC`).
-
-### Extended metrics reveal a nuanced picture
-
-In addition to AUC, all methods are evaluated on **PR-AUC, F1, Precision, Recall (macro),
-G-mean, and Balanced Accuracy**. These reveal that no single method dominates across every
-metric: while Q-G-CTGAN achieves the highest average AUC (under RF) and the best overall
-Friedman–Nemenyi rank, the no-oversampling baseline achieves the highest average F1 (0.7432)
-and PR-AUC (0.5910), and SMOTE/ADASYN achieve the highest average G-mean and Balanced
-Accuracy — a pattern traced to the same threshold-collapse phenomenon that produces a G-mean
-of exactly 0 for several methods on extreme-IR datasets (SECOM, Abalone-19, UNSW-NB15) under
-RF's default 0.5 decision threshold. We report all metrics transparently
-(`results/05_unified_results.csv`) rather than selectively highlighting only the ones
-favourable to the proposed method. Minority-class recall (sensitivity), recovered
-algebraically from macro-averaged Recall and G-mean, is reported separately
-(`results/05_minority_recall_recovered.csv`): Q-G-CTGAN achieves the highest average
-minority-class recall (0.5029) among the five compared generative methods.
-
-### Adaptive vs. fixed threshold (revised finding)
-
-On the expanded 16-dataset collection, the adaptive α_c configuration no longer achieves the
-best overall rank among the four threshold configurations tested (fixed α ∈ {0.1, 0.2, 0.3},
-adaptive): fixed α=0.3 achieves the lowest (best) overall average rank (2.36), ahead of
-adaptive α_c (2.58, third of four). All four configurations remain close in absolute AUC
-(maximum Δ=0.0038). This revises an earlier, 11-dataset finding in which adaptive α_c was
-the best-ranked configuration; we report this transparently
-(`results/08a_quality_ablation_results.csv`) and retain adaptive α_c as the default
-configuration for its theoretical motivation and robustness to manual threshold tuning.
+### Notes on cost
+- `ctdGAN` and `CTAB-GAN+` train on the full training set and are the slowest.
+  On the three largest datasets (`fraud_detection`, `unsw_nb15`, `protein_homo`)
+  a single `ctdGAN` seed already costs hours, so notebook 04 runs a **single
+  seed** on those three (multiple seeds on the other 13); edit `LARGE`/`SEEDS`
+  to change this.
+- `CTAB-GAN+` is evaluated on **12 of 16** datasets (excludes `fraud_detection`,
+  `protein_homo`, `unsw_nb15` for runtime and `ecoli` for near-zero minority
+  yield), matching the study design.
+- The CTGAN-based methods (`KMeans_CTGAN`, `CTGAN_MOS`, `Q-G-CTGAN`, `G-CTGAN`)
+  train on the **minority class only** and are fast even on the large datasets.
 
 ---
 
-## License
+## Suggested repository name
 
-This repository is released under the [MIT License](LICENSE).
+`quality-aware-cluster-oversampling` (descriptive and method-neutral). Alternatives:
+`qgctgan-oversampling`, `intra-cluster-quality-filtering`.
+
+For anonymous submission, host under a fresh anonymous account, or mirror to
+`https://anonymous.4open.science/` and cite that link in the manuscript.

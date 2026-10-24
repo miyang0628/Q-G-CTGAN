@@ -1,0 +1,7 @@
+# Notebook 04 (ctdGAN)
+artsyn==0.5.2
+scikit-learn
+lightgbm
+torch
+pandas
+numpy

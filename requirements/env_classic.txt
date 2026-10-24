@@ -1,0 +1,7 @@
+# Notebook 01 (None, SMOTE, ADASYN, G-SMOTE)
+scikit-learn
+imbalanced-learn
+imbalanced-learn-extra
+lightgbm
+pandas
+numpy

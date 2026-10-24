@@ -1,0 +1,6 @@
+# Notebook 05 (CTAB-GAN+): also clone Team-TUD/CTAB-GAN-Plus and set CTABGAN_REPO
+torch
+scikit-learn
+lightgbm
+pandas
+numpy

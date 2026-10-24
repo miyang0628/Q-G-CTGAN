@@ -1,0 +1,8 @@
+method,avg_rank
+G-SMOTE,2.75
+CTGAN-MOS,3.031
+K-means CTGAN,3.312
+Q-G-CTGAN,3.375
+SMOTE,4.969
+ADASYN,5.25
+ctdGAN,5.312
